@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <!-- Swiper.js CSS (Мобильді слайдер) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<!-- SweetAlert2 CSS (Заманауи хабарламалар) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Qurylys B2B Enterprise System</title>
+    
+    <!-- 1. РЕСМИ ВЕКТОРЛЫҚ ИКОНКАЛАР (FONT AWESOME 6 HD) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- КАРТА ЖӘНЕ НЕГІЗГІ СТИЛЬДЕР -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- СКРИНШОТТАН ҚОРҒАЙТЫН ҚАРА ЭКРАН ҚАБАТЫ (ANTI-SCREENSHOT SHIELD) -->
+<div id="blackoutShield" class="blackout-screen">
+    <div class="blackout-msg">
+        <i class="fa-solid fa-shield-halved" style="font-size:32px; margin-bottom:12px; display:block;"></i>
+        🔒 ҚАУІПСІЗДІК РЕЖИМІ: СКРИНШОТ ЖАСАУҒА ЖӘНЕ БАҒАЛАРДЫ ТҮСІРУГЕ ТЫЙЫМ САЛЫНҒАН!
+    </div>
+</div>
+
+<!-- ЖҮЙЕГЕ КІРУ ТЕРЕЗЕСІ (ТАЗА ATIKO/QURYLYS СТИЛІ) -->
+<div id="authModal" class="auth-full-screen" style="display:flex;">
+    <div class="auth-card-clean">
+        <!-- Кәсіби графикалық кіру логотипі -->
+        <div class="auth-logo-box">
+            <div style="display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px; background:linear-gradient(135deg, #0f5257, #1a7a82); border-radius:16px; color:#f59e0b; font-size:30px; margin-bottom:12px; box-shadow:0 6px 18px rgba(15,82,87,0.3);">
+                <i class="fa-solid fa-cubes-stacked"></i>
+            </div>
+            <div class="logo-main">qurylys</div>
+            <div class="logo-sub">b2b pro</div>
+        </div>
+
+        <form id="cleanLoginForm" onsubmit="handleSecureLogin(event)">
+            <!-- 1. Пайдаланушы -->
+            <div class="field-wrap">
+                <label class="field-label">Пользователь / Пайдаланушы:</label>
+                <div class="field-input-box">
+                    <span class="field-icon"><i class="fa-solid fa-user"></i></span>
+                    <input type="text" id="authUsername" placeholder="Администратор / Директор" required value="Администратор">
+                </div>
+            </div>
+
+            <!-- 2. Құпия сөз -->
+            <div class="field-wrap">
+                <label class="field-label">Пароль / Құпия сөз:</label>
+                <div class="field-input-box">
+                    <span class="field-icon"><i class="fa-solid fa-lock"></i></span>
+                    <input type="password" id="authPassword" placeholder="••••••••" required value="admin">
+                </div>
+            </div>
+
+            <!-- 3. Код (DA немесе DBMS) -->
+            <div class="field-wrap highlight-code">
+                <label class="field-label">Код (Сатып алушы: DA... | Сатушы: DBMS...):</label>
+                <div class="field-input-box">
+                    <span class="field-icon"><i class="fa-solid fa-id-card-clip"></i></span>
+                    <input type="text" id="authCode" placeholder="DA01 немесе DBMS01" required value="DA01" oninput="this.value = this.value.toUpperCase()">
+                </div>
+            </div>
+
+            <!-- Автоматты кіру қосқышы -->
+            <div class="auto-login-row">
+                <label class="switch">
+                    <input type="checkbox" id="autoLoginCheck" checked>
+                    <span class="slider"></span>
+                </label>
+                <span class="auto-login-text">Автоматический вход / Автоматты кіру</span>
+            </div>
+
+            <!-- Батырма: ВХОД -->
+            <div class="auth-action-buttons">
+                <button type="submit" class="btn-clean-submit" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                    <span>ВХОД</span>
+                </button>
+            </div>
+        </form>
+
+        <div class="auth-footer-link">
+            <span>qurylys-b2b.kz • Жабық B2B экожүйесі</span>
+        </div>
+    </div>
+</div>
+
+<!-- ================= БАСТЫ МОБИЛЬДІ ҚОСЫМША ШЕҢБЕРІ ================= -->
+<div class="app-wrapper">
+
+    <!-- ЖОҒАРҒЫ БЕКІТІЛГЕН БАСҚАРУ БЛОГЫ -->
+    <header class="top-header">
+        <div class="brand-row">
+            <!-- КӘСІБИ QURYLYS B2B ГРАФИКАЛЫҚ ЭМБЛЕМАСЫ -->
+            <div class="brand-title">
+                <div class="brand-logo-icon">
+                    <i class="fa-solid fa-cubes-stacked"></i>
+                </div>
+                <div class="brand-name-wrap">
+                    <span data-i18n="app_title" class="logo-text-bold">QURYLYS</span>
+                    <span data-i18n="app_subtitle" class="logo-badge-b2b">B2B PRO</span>
+                </div>
+            </div>
+
+            <select id="langSelect" class="lang-select" onchange="setLanguage(this.value)">
+                <option value="kk">🇰🇿 Қаз</option>
+                <option value="ru">🇷🇺 Рус</option>
+                <option value="en">🇬🇧 Eng</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="uz">🇺🇿 O'zb</option>
+                <option value="ky">🇰🇬 Кыр</option>
+            </select>
+        </div>
+
+        <!-- ІЗДЕУ ҚАТАРЫ МЕН БУРГЕР БАТЫРМАСЫ -->
+        <div class="search-bar-row">
+            <button class="burger-circle-btn" onclick="openCategoryDrawer()" title="Санаттар мәзірі">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div style="position:relative; flex:1; display:flex; align-items:center;">
+                <i class="fa-solid fa-magnifying-glass search-inline-icon"></i>
+                <input type="text" id="globalSearchInput" class="search-input" data-i18n-ph="search_placeholder" placeholder="SKU, бренд, цемент, болгарка..." onkeyup="globalSearch()">
+            </div>
+            <button class="qr-btn" onclick="alert('📷 QR & Barcode сканері қосылды')">
+                <i class="fa-solid fa-qrcode"></i>
+                <span data-i18n="qr_btn">Штрих</span>
+            </button>
+        </div>
+
+        <!-- ЖОҒАРҒЫ СҮЗГІ, АКЦИЯ, РАСПРОДАЖА, ПРЕДЗАКАЗ ЧИПТЕРІ -->
+        <div class="chips-scroll-row">
+            <button type="button" class="chip-btn filter-main active" onclick="openFilterModal()">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Фильтр</span>
+            </button>
+            <button type="button" class="chip-btn" id="chipBtnPromo" onclick="filterByTag('promo', this)">
+                <i class="fa-solid fa-fire-flame-curved text-danger"></i>
+                <span>Акция</span>
+            </button>
+            <button type="button" class="chip-btn" id="chipBtnSale" onclick="filterByTag('sale', this)">
+                <i class="fa-solid fa-tags text-warning"></i>
+                <span>Распродажа</span>
+            </button>
+            <button type="button" class="chip-btn" id="chipBtnPreorder" onclick="filterByTag('preorder', this)">
+                <i class="fa-solid fa-clock text-info"></i>
+                <span>Предзаказ</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- НЕГІЗГІ БӨЛІМДЕР (TABS) -->
+    <main class="content-body">
+        
+        <!-- 1. БАСТЫ БЕТ (КОМПАНИЯ ВИЗИТКАСЫ) -->
+        <section id="tab-main" class="tab-pane active">
+            <div class="banner-box">
+                <h3 style="margin:0 0 4px 0; display:flex; align-items:center; gap:6px;" data-i18n="hero_title">
+                    <i class="fa-solid fa-bolt-lightning text-warning"></i>
+                    <span>ЭКСПРЕСС CROSS-DOCKING (2-6 Сағатта жеткізу)</span>
+                </h3>
+                <p style="margin:0; font-size:11px;" data-i18n="hero_desc">Тікелей зауыттар мен ортақ қоймалардан алдын ала төлемсіз нысанға дейін жедел жеткізу.</p>
+            </div>
+
+            <div class="card-box">
+                <div style="font-weight:bold; margin-bottom:6px; display:flex; align-items:center; gap:6px;" data-i18n="video_title">
+                    <i class="fa-solid fa-circle-play text-danger"></i>
+                    <span>Жүйені қолдану бейне-нұсқаулығы</span>
+                </div>
+                <div class="video-container">
+                    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>
+                </div>
+            </div>
+
+            <!-- Компания мекенжайы және Кірістірілген картасы -->
+            <div class="card-box">
+                <h4 style="margin:0 0 8px 0; color:var(--primary); display:flex; align-items:center; gap:6px;" data-i18n="company_info_title">
+                    <i class="fa-solid fa-building"></i>
+                    <span>«QURYLYS B2B ENTERPRISE» Бас кеңсесі</span>
+                </h4>
+                <div style="font-size:12px; line-height: 1.6;">
+                    <p style="margin:4px 0; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-location-dot" style="color:#ef4444; width:16px;"></i>
+                        <span><b data-i18n="company_address_label">Мекенжайымыз:</b> <span data-i18n="company_address_val">Қазақстан, Қаскелең қ., Наурызбай Батыр даңғылы 29, 4-қабат</span></span>
+                    </p>
+                    <p style="margin:4px 0; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-phone" style="color:#10b981; width:16px;"></i>
+                        <span><b data-i18n="company_phone_label">Байланыс телефондары:</b> <span data-i18n="company_phone_val">+7 (747) 440-13-03, +7 (778) 817-53-60</span></span>
+                    </p>
+                    <p style="margin:4px 0; color:var(--text-secondary); display:flex; align-items:center; gap:6px;" data-i18n="company_work_hours">
+                        <i class="fa-solid fa-clock" style="color:#f59e0b; width:16px;"></i>
+                        <span>Жұмыс уақыты: Дс-Сб 08:30 - 19:00</span>
+                    </p>
+                </div>
+
+                <!-- Ұқыпты карта виджеті -->
+                <div style="margin-top:10px;">
+                    <div style="width:100%; height:180px; border-radius:8px; border:1px solid var(--border-color); overflow:hidden;">
+                        <iframe 
+                            width="100%" 
+                            height="100%" 
+                            frameborder="0" 
+                            scrolling="no" 
+                            marginheight="0" 
+                            marginwidth="0" 
+                            src="https://www.openstreetmap.org/export/embed.html?bbox=76.8700%2C43.2520%2C76.9140%2C43.2760&amp;layer=mapnik&amp;marker=43.2642%2C76.8920" 
+                            style="border:0;">
+                        </iframe>
+                    </div>
+                    
+                    <a href="https://2gis.kz/almaty/search/Райымбека%20212" target="_blank" class="btn-open-2gis">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                        <span>2GIS Навигаторымен маршрут ашу</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Техникалық қолдау -->
+            <div class="card-box">
+                <h4 style="margin:0 0 8px 0; color:var(--primary); display:flex; align-items:center; gap:6px;" data-i18n="support_title">
+                    <i class="fa-solid fa-headset"></i>
+                    <span>Техникалық қолдау & Арыз-шағымдар</span>
+                </h4>
+                <div style="margin-bottom:8px;">
+                    <label style="font-size:11px; font-weight:bold;" data-i18n="support_type_label">Өтініш түрі:</label>
+                    <select id="fbType" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border-color); background:var(--chip-bg); color:var(--text-primary); margin-top:4px;">
+                        <option value="Ұсыныс" data-i18n="support_opt_sug">💡 Ұсыныс білдіру</option>
+                        <option value="Шағым" data-i18n="support_opt_comp">⚠️ Арыз немесе шағым</option>
+                    </select>
+                </div>
+                <div>
+                    <textarea id="fbMessage" rows="3" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border-color); background:var(--chip-bg); color:var(--text-primary);" data-i18n-ph="support_msg_placeholder"></textarea>
+                </div>
+                <button class="btn-primary" onclick="sendFeedback()" data-i18n="support_send_btn" style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Өтінішті жіберу</span>
+                </button>
+            </div>
+
+            <!-- Серіктестер -->
+            <div class="card-box" style="text-align:center;">
+                <div style="font-size:10px; font-weight:bold; color:var(--text-secondary); margin-bottom:8px;" data-i18n="partners_title">СЕРІКТЕС БАНКТЕР МЕН ДИСТРИБЬЮТОРЛАР</div>
+                <div style="display:flex; justify-content:center; align-items:center; gap:14px; flex-wrap:wrap;">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" height="18" alt="Visa">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" height="18" alt="MasterCard">
+                    <img src="https://kaspi.kz/img/kaspi_logo.svg" height="18" alt="Kaspi.kz" style="background:#fff; padding:2px 4px; border-radius:3px;">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Halyk_Bank_Logo.svg" height="18" alt="Halyk" style="background:#fff; padding:2px 4px; border-radius:3px;">
+                </div>
+            </div>
+        </section>
+
+<!-- KASPI СТИЛІНДЕГІ САУСАҚПЕН ЖЫЛЖИТЫН БАННЕРЛЕР (SWIPER) -->
+<div class="swiper main-banner-swiper" style="margin-bottom: 14px; border-radius: 14px; overflow: hidden;">
+    <div class="swiper-wrapper">
+        <!-- 1-Слайд: Экспресс жеткізу -->
+        <div class="swiper-slide banner-slide-1">
+            <div style="padding: 16px; background: linear-gradient(135deg, #0f5257, #136a71); color: #fff; min-height: 110px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="background: #f59e0b; color: #000; font-size: 9.5px; font-weight: 900; padding: 2px 7px; border-radius: 4px;">ЭКСПРЕСС</span>
+                    <h3 style="margin: 6px 0 2px 0; font-size: 15px; font-weight: 800;">Cross-Docking 2-6 сағатта</h3>
+                    <p style="margin: 0; font-size: 11px; opacity: 0.9;">Зауыттан нысанға дейін тікелей жеткізу</p>
+                </div>
+                <div style="font-size: 34px; color: #f59e0b; margin-right: 8px;">
+                    <i class="fa-solid fa-truck-fast"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2-Слайд: Аванссыз бронь -->
+        <div class="swiper-slide banner-slide-2">
+            <div style="padding: 16px; background: linear-gradient(135deg, #059669, #10b981); color: #fff; min-height: 110px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="background: #ffffff; color: #059669; font-size: 9.5px; font-weight: 900; padding: 2px 7px; border-radius: 4px;">0% ТӨЛЕМ</span>
+                    <h3 style="margin: 6px 0 2px 0; font-size: 15px; font-weight: 800;">Қабылдаған соң төлеңіз</h3>
+                    <p style="margin: 0; font-size: 11px; opacity: 0.9;">Тек тексеріп алғаннан кейін есеп айырысу</p>
+                </div>
+                <div style="font-size: 34px; color: #ffffff; margin-right: 8px;">
+                    <i class="fa-solid fa-handshake"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3-Слайд: Серіктестік жеңілдіктер -->
+        <div class="swiper-slide banner-slide-3">
+            <div style="padding: 16px; background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; min-height: 110px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="background: #000; color: #fff; font-size: 9.5px; font-weight: 900; padding: 2px 7px; border-radius: 4px;">B2B КӨТЕРМЕ</span>
+                    <h3 style="margin: 6px 0 2px 0; font-size: 15px; font-weight: 800;">Көлемге жеңілдіктер</h3>
+                    <p style="margin: 0; font-size: 11px; opacity: 0.9;">20 тоннадан жоғары арнайы зауыттық баға</p>
+                </div>
+                <div style="font-size: 34px; color: #ffffff; margin-right: 8px;">
+                    <i class="fa-solid fa-percent"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Слайдер нүктелері (Pagination) -->
+    <div class="swiper-pagination"></div>
+</div>
+        
+        <!-- 2. КАТАЛОГ (БРЕНДТЕР & ТАУАРЛАР) -->
+        <section id="tab-catalog" class="tab-pane">
+            <!-- Брендтер тізімі көрінісі -->
+            <div id="brandsCatalogView">
+                <div class="catalog-header-wrap">
+                    <h3 style="margin:0; font-size:16px; color:var(--primary); display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-building-flag"></i>
+                        <span>Құрылыс Брендтері & Зауыттар</span>
+                    </h3>
+                    <p style="font-size:11px; color:var(--text-secondary); margin:4px 0 10px 0;">Категориялар бойынша ресми өндірушілер мен дистрибьюторлар</p>
+                </div>
+
+                <div class="brand-search-box-wrap" style="position:relative; display:flex; align-items:center;">
+                    <i class="fa-solid fa-magnifying-glass search-inline-icon"></i>
+                    <input type="text" id="brandSearchInput" class="kaspi-search-field" style="width:100%; padding-left:34px;" placeholder="Бренд немесе зауыт атауын іздеу..." onkeyup="filterBrandsList(this.value)">
+                </div>
+
+                <!-- Брендтер контейнері -->
+                <div id="brandsGroupContainer"></div>
+            </div>
+
+            <!-- Таңдалған нақты брендтің тауарлары көрінісі -->
+            <div id="singleBrandProductsView" style="display:none;">
+                <div class="kaspi-top-bar" style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                    <button class="kaspi-back-btn" onclick="backToBrandsList()">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="kaspi-title-wrap">
+                        <h3 id="selectedBrandNameTitle" class="kaspi-title" style="margin:0; font-size:15px;">Бренд тауарлары</h3>
+                        <div id="selectedBrandMeta" class="kaspi-breadcrumbs" style="display:block; font-size:11px; color:var(--text-secondary);"></div>
+                    </div>
+                </div>
+                <div id="brandProductsListContainer"></div>
+            </div>
+        </section>
+
+        <!-- 3. ЗАЯВКАЛАР ЖӘНЕ ТРЕКИНГ -->
+        <section id="tab-orders" class="tab-pane">
+            <h3 style="margin-top:0; display:flex; align-items:center; gap:6px;" data-i18n="active_orders_title">
+                <i class="fa-solid fa-clipboard-list text-primary"></i>
+                <span>Белсенді Заявкалар & Трекинг</span>
+            </h3>
+            <div id="activeOrdersList"></div>
+        </section>
+
+        <!-- 4. ИСТОРИЯ (ЭСФ & ЧЕКТЕР) -->
+        <section id="tab-history" class="tab-pane">
+            <h3 style="margin-top:0; display:flex; align-items:center; gap:6px;" data-i18n="history_orders_title">
+                <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+                <span>Тапсырыстар Тарихы (ЭСФ)</span>
+            </h3>
+            <div id="historyOrdersList"></div>
+        </section>
+
+        <!-- 5. ПРОФИЛЬ -->
+        <section id="tab-profile" class="tab-pane">
+            <div class="card-box">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                    <div style="width:44px; height:44px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:20px;">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:bold; font-size:14px;">Толеген Т. (ТОО)</div>
+                        <div style="font-size:11px; color:var(--text-secondary);">БИН: 210340029182 | Тариф: Enterprise Pro</div>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="openSettingsModal()" data-i18n="settings_btn" style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Баптаулар (Настройки)</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- ТӨМЕНГІ НАВИГАЦИЯ (ВЕКТОРЛЫҚ АНЫҚ ИКОНКАЛАР) -->
+    <nav class="bottom-nav">
+        <div class="nav-btn active" onclick="switchNav('main', this)">
+            <div><i class="fa-solid fa-house"></i></div>
+            <span data-i18n="nav_main">Басты бет</span>
+        </div>
+        <div class="nav-btn" onclick="switchNav('catalog', this)">
+            <div><i class="fa-solid fa-layer-group"></i></div>
+            <span data-i18n="nav_catalog">Брендтер</span>
+        </div>
+        <div class="nav-btn" onclick="switchNav('orders', this)">
+            <div><i class="fa-solid fa-clipboard-list"></i></div>
+            <span data-i18n="nav_orders">Заявкалар</span>
+        </div>
+        <div class="nav-btn" onclick="switchNav('history', this)">
+            <div><i class="fa-solid fa-clock-rotate-left"></i></div>
+            <span data-i18n="nav_history">История</span>
+        </div>
+        <div class="nav-btn" onclick="switchNav('profile', this)">
+            <div><i class="fa-solid fa-user-gear"></i></div>
+            <span data-i18n="nav_profile">Профиль</span>
+        </div>
+    </nav>
+</div>
+
+<!-- ================= БУРГЕРДЕН АШЫЛАТЫН 16 САНАТТЫҚ DRAWER МӘЗІРІ ================= -->
+<div id="categoryDrawerOverlay" class="drawer-overlay" onclick="closeCategoryDrawer(event)">
+    <div class="drawer-content" onclick="event.stopPropagation()">
+        <div class="drawer-top-bar">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button id="drawerBackBtn" class="kaspi-back-btn" style="display:none;" onclick="navigateDrawerBack()">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div class="drawer-title-box">
+                    <i class="fa-solid fa-folder-tree text-accent"></i>
+                    <span id="drawerTitle">16 Негізгі санат</span>
+                </div>
+            </div>
+            <button class="drawer-close-btn" onclick="closeCategoryDrawer()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="drawer-search-wrap" style="position:relative; display:flex; align-items:center;">
+            <i class="fa-solid fa-magnifying-glass search-inline-icon"></i>
+            <input type="text" id="drawerSearchInput" class="drawer-search-input" placeholder="Санаттар бойынша іздеу..." onkeyup="filterDrawerCategories(this.value)">
+        </div>
+
+        <!-- Санаттар тізімі (Kaspi стилінде векторлық иконкалармен) -->
+        <div id="drawerCategoriesContainer" class="drawer-categories-scroll"></div>
+    </div>
+</div>
+
+<!-- ================= ТАПСЫРЫС РӘСІМДЕУ ЖӘНЕ АВАНС ЕСЕПТЕУ МОДАЛІ ================= -->
+<div id="orderModal" class="modal-layer">
+    <div class="modal-window">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
+            <h3 style="margin:0; font-size:15px; color:var(--primary); display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span>Заявка рәсімдеу</span>
+            </h3>
+            <button onclick="closeOrderModal()" style="background:none; border:none; font-size:18px; cursor:pointer; color:var(--text-secondary);">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        
+        <div id="orderProductDetails" style="font-size:12px; margin-bottom:10px; background:var(--chip-bg); padding:10px; border-radius:8px;"></div>
+
+        <div class="input-group" style="margin-bottom:10px;">
+            <label style="font-size:11.5px; font-weight:bold; margin-bottom:4px; display:block;">Тапсырыс саны (дана / қап / партия):</label>
+            <input type="number" id="orderQtyInput" min="1" value="10" oninput="recalculateOrderSummary()" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-primary); outline:none;">
+        </div>
+
+        <!-- Аванс есептеу калькуляторы -->
+        <div class="advance-summary-box">
+            <div class="summary-line">
+                <span>Жалпы тапсырыс сомасы:</span>
+                <b id="summaryTotalAmount">0 ₸</b>
+            </div>
+            <div class="summary-line highlight-adv">
+                <span id="summaryAdvanceLabel">Аванс төлемі (30%):</span>
+                <b id="summaryAdvanceAmount">0 ₸</b>
+            </div>
+            <div class="summary-line highlight-rem">
+                <span>Жеткізілгенде төленетін қалдық:</span>
+                <b id="summaryRemainingAmount">0 ₸</b>
+            </div>
+            <div id="minOrderWarning" style="color:var(--danger); font-size:10.5px; margin-top:6px; display:none;"></div>
+        </div>
+
+        <div class="input-group" style="margin-bottom:12px;">
+            <label style="font-size:11.5px; font-weight:bold; margin-bottom:4px; display:block;">Жеткізу нысаны (Құрылыс алаңы / Қойма):</label>
+            <input type="text" id="orderDeliveryAddress" placeholder="Мысалы: Алматы қ., Абай/Тұрғыт Озал, №2 қақпа" value="Алматы қ., Төле би 291, №1 құрылыс алаңы" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-primary); outline:none;">
+        </div>
+
+        <button class="btn-primary" id="btnConfirmOrder" onclick="submitFinalOrder()">Заявканы растау</button>
+        <button class="btn-secondary" style="margin-top:6px;" onclick="closeOrderModal()">Болдырмау</button>
+    </div>
+</div>
+
+<!-- ================= БАПТАУЛАР (НАСТРОЙКИ) ТЕРЕЗЕСІ ================= -->
+<div id="settingsModal" class="modal-layer">
+    <div class="modal-window">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+            <h3 style="margin:0; font-size:15px; color:var(--primary); display:flex; align-items:center; gap:6px;" data-i18n="settings_title">
+                <i class="fa-solid fa-gear"></i>
+                <span>Қосымша баптаулары</span>
+            </h3>
+            <button onclick="closeSettingsModal()" style="background:none; border:none; font-size:18px; cursor:pointer; color:var(--text-secondary);">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        
+        <div style="margin-bottom:12px;">
+            <label style="font-size:11px; font-weight:bold;" data-i18n="theme_label">Интерфейс фоны (Тема):</label>
+            <select id="themeSelector" style="width:100%; padding:8px; border-radius:6px; margin-top:4px; border:1px solid var(--border-color);" onchange="changeTheme(this.value)">
+                <option value="light" data-i18n="theme_light">Ақшыл (Kaspi стилі)</option>
+                <option value="dark" data-i18n="theme_dark">Қараңғы (Түнгі режим)</option>
+                <option value="gold" data-i18n="theme_gold">Алтын (Qazaq Vibe)</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <label style="font-size:11px; font-weight:bold;" data-i18n="font_label">Қаріп өлшемі (Шрифт):</label>
+            <select id="fontSelector" style="width:100%; padding:8px; border-radius:6px; margin-top:4px; border:1px solid var(--border-color);" onchange="changeFontSize(this.value)">
+                <option value="font-sm" data-i18n="font_sm">Ұсақ (Small)</option>
+                <option value="font-md" selected data-i18n="font_md">Қалыпты (Normal)</option>
+                <option value="font-lg" data-i18n="font_lg">Үлкен (Large)</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:12px;" data-i18n="notif_label">Қойма хабарламалары:</span>
+            <input type="checkbox" id="notifToggle" checked onchange="toggleSetting('notif', this.checked)" style="accent-color:var(--primary); width:16px; height:16px;">
+        </div>
+
+        <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:12px;" data-i18n="sound_label">Дыбыстық сигналдар:</span>
+            <input type="checkbox" id="soundToggle" checked onchange="toggleSetting('sound', this.checked)" style="accent-color:var(--primary); width:16px; height:16px;">
+        </div>
+
+        <button class="btn-primary" onclick="closeSettingsModal()" data-i18n="close_btn">Жабу</button>
+    </div>
+</div>
+
+<!-- ================= БАҒАЛАРДЫ САЛЫСТЫРУ ТЕРЕЗЕСІ ================= -->
+<div id="compareModal" class="modal-layer">
+    <div class="modal-window">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+            <h3 style="margin:0; font-size:15px; color:var(--primary); display:flex; align-items:center; gap:6px;" data-i18n="compare_btn">
+                <i class="fa-solid fa-scale-balanced"></i>
+                <span>Бағаларды қатар салыстыру</span>
+            </h3>
+            <button onclick="document.getElementById('compareModal').style.display='none'" style="background:none; border:none; font-size:18px; cursor:pointer; color:var(--text-secondary);">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div id="compareOffersContainer"></div>
+        <button class="btn-secondary" style="margin-top:10px;" onclick="document.getElementById('compareModal').style.display='none'" data-i18n="close_btn">Жабу</button>
+    </div>
+</div>
+
+<!-- ================= KASPI ТОЛЫҚ ФУНКЦИОНАЛДЫ СҮЗГІ МОДАЛІ ================= -->
+<div id="filterModal" class="modal-layer" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.65); z-index:999999; justify-content:center; align-items:center;">
+    <div class="modal-window" style="background:#ffffff; width:94%; max-width:440px; height:90vh; border-radius:16px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 15px 35px rgba(0,0,0,0.3); margin:auto;">
+        
+        <!-- Шапка: Тақырып & Жабу -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid #e2e8f0; background:#fff;">
+            <div>
+                <b style="font-size:16px; color:#0f5257; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Фильтры (Kaspi Сүзгі)</span>
+                </b>
+                <div style="font-size:10.5px; color:#64748b;">Барлық критерийлер бойынша сұрыптау</div>
+            </div>
+            <button type="button" style="background:none; border:none; font-size:20px; color:#64748b; cursor:pointer;" onclick="closeFilterModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Негізгі айналмалы бөлім (Scroll) -->
+        <div style="flex:1; overflow-y:auto; padding:16px 18px; text-align:left;" onchange="updateKaspiFilterLiveCount()">
+            
+            <!-- 1. СҰРЫПТАУ (СОРТИРОВКА) -->
+            <div style="margin-bottom:16px; border-bottom:1px dashed #e2e8f0; padding-bottom:14px;">
+                <div style="font-size:12px; font-weight:800; color:#1e293b; margin-bottom:8px;">Сұрыптау (Сортировка):</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <label class="kaspi-chip-radio">
+                        <input type="radio" name="sortOption" value="popular" checked>
+                        <span>🔥 Танымал</span>
+                    </label>
+                    <label class="kaspi-chip-radio">
+                        <input type="radio" name="sortOption" value="price_asc">
+                        <span>Бағасы: Арзаннан ↑</span>
+                    </label>
+                    <label class="kaspi-chip-radio">
+                        <input type="radio" name="sortOption" value="price_desc">
+                        <span>Бағасы: Қымбаттан ↓</span>
+                    </label>
+                    <label class="kaspi-chip-radio">
+                        <input type="radio" name="sortOption" value="stock_desc">
+                        <span>Қоймада көптер</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 2. БАҒА ЖӘНЕ ЖЫЛДАМ ПРЕСЕТТЕР -->
+            <div style="margin-bottom:16px; border-bottom:1px dashed #e2e8f0; padding-bottom:14px;">
+                <div style="font-size:12px; font-weight:800; color:#1e293b; margin-bottom:8px;">Бағасы, ₸:</div>
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <input type="number" id="filterMinPrice" placeholder="Мин: 0" oninput="updateKaspiFilterLiveCount()" style="width:50%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; outline:none;">
+                    <input type="number" id="filterMaxPrice" placeholder="Макс: 200 000" oninput="updateKaspiFilterLiveCount()" style="width:50%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; outline:none;">
+                </div>
+                <!-- Жылдам баға чиптері -->
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <button type="button" class="kaspi-btn-tag" onclick="setPricePreset(0, 5000)">5 000 ₸ дейін</button>
+                    <button type="button" class="kaspi-btn-tag" onclick="setPricePreset(5000, 20000)">5к – 20к ₸</button>
+                    <button type="button" class="kaspi-btn-tag" onclick="setPricePreset(20000, 60000)">20к – 60к ₸</button>
+                    <button type="button" class="kaspi-btn-tag" onclick="setPricePreset(60000, 999999)">60 000+ ₸</button>
+                </div>
+            </div>
+
+            <!-- 3. ТӨЛЕМ ШАРТЫ / АВАНС -->
+            <div style="margin-bottom:16px; border-bottom:1px dashed #e2e8f0; padding-bottom:14px;">
+                <div style="font-size:12px; font-weight:800; color:#1e293b; margin-bottom:8px;">Төлем шарты / Аванс:</div>
+                <div style="display:flex; flex-direction:column; gap:7px; font-size:11.5px;">
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="filterAdv0" style="accent-color:#0f5257;"> 
+                        <span>🟢 Без аванса (0% / Қабылдаған соң)</span>
+                    </label>
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="filterAdv30" style="accent-color:#0f5257;"> 
+                        <span>🟠 Аванс 30% (Зауыттық бронь)</span>
+                    </label>
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="filterAdv50" style="accent-color:#0f5257;"> 
+                        <span>🟠 Аванс 50% (Вагон / Үйінді)</span>
+                    </label>
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="filterAdv100" style="accent-color:#0f5257;"> 
+                        <span>🔵 100% Алдын ала төлем</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 4. БРЕНДТЕРДІ ІЗДЕУ ЖӘНЕ ТАҢДАУ -->
+            <div style="margin-bottom:16px; border-bottom:1px dashed #e2e8f0; padding-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <div style="font-size:12px; font-weight:800; color:#1e293b;">Брендтер:</div>
+                    <span id="brandsSelectCount" style="font-size:10.5px; color:#64748b;">барлығы таңдалды</span>
+                </div>
+                <div style="position:relative; display:flex; align-items:center; margin-bottom:8px;">
+                    <i class="fa-solid fa-magnifying-glass search-inline-icon"></i>
+                    <input type="text" id="brandSearchInputFilter" placeholder="Бренд атауын іздеу..." oninput="onFilterBrandSearch(this.value)" style="width:100%; box-sizing:border-box; padding:8px 10px 8px 34px; border:1px solid #cbd5e1; border-radius:6px; font-size:11.5px; outline:none;">
+                </div>
+                <div id="filterBrandsListContainer" style="max-height:130px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; font-size:11.5px; padding-right:4px;">
+                    <!-- Брендтер чекбокстары JavaScript арқылы салынады -->
+                </div>
+            </div>
+
+            <!-- 5. САЛЫҚ РЕЖИМІ (ҚҚС 12%) -->
+            <div style="margin-bottom:16px; border-bottom:1px dashed #e2e8f0; padding-bottom:14px;">
+                <div style="font-size:12px; font-weight:800; color:#1e293b; margin-bottom:8px;">Салық режимі:</div>
+                <div style="display:flex; gap:14px; font-size:11.5px;">
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                        <input type="checkbox" id="filterVatYes" checked style="accent-color:#0f5257;"> 
+                        <span>🔵 ҚҚС 12% (С НДС)</span>
+                    </label>
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                        <input type="checkbox" id="filterVatNo" checked style="accent-color:#0f5257;"> 
+                        <span>🟡 ҚҚС-сыз (Без НДС)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 6. ӨЛШЕМ БІРЛІГІ (ЕДИНИЦЫ ИЗМЕРЕНИЯ) -->
+            <div style="margin-bottom:16px; border-bottom:1px dashed #e2e8f0; padding-bottom:14px;">
+                <div style="font-size:12px; font-weight:800; color:#1e293b; margin-bottom:8px;">Өлшем бірлігі:</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <label class="kaspi-chip-check"><input type="checkbox" name="unitFilter" value="қап"><span>Қап (мешок)</span></label>
+                    <label class="kaspi-chip-check"><input type="checkbox" name="unitFilter" value="дана"><span>Дана (шт)</span></label>
+                    <label class="kaspi-chip-check"><input type="checkbox" name="unitFilter" value="тонна"><span>Тонна</span></label>
+                    <label class="kaspi-chip-check"><input type="checkbox" name="unitFilter" value="метр"><span>Метр</span></label>
+                    <label class="kaspi-chip-check"><input type="checkbox" name="unitFilter" value="парақ"><span>Парақ (лист)</span></label>
+                    <label class="kaspi-chip-check"><input type="checkbox" name="unitFilter" value="м³"><span>м³ (блок)</span></label>
+                </div>
+            </div>
+
+            <!-- 7. ҚОЙМАДА БОЛУЫ -->
+            <div style="margin-bottom:10px;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:bold; color:#1e293b;">
+                    <input type="checkbox" id="filterInStockOnly" checked style="accent-color:#0f5257; width:16px; height:16px;">
+                    <span>📦 Тек қоймада барлары (В наличии)</span>
+                </label>
+            </div>
+
+        </div>
+
+        <!-- Төменгі бекітілген батырмалар блогы -->
+        <div style="display:grid; grid-template-columns:1fr 2.2fr; gap:10px; padding:12px 18px; border-top:1px solid #e2e8f0; background:#f8fafc;">
+            <button type="button" style="padding:11px; border:1px solid #cbd5e1; background:#ffffff; border-radius:8px; font-size:12px; font-weight:bold; color:#475569; cursor:pointer;" onclick="resetKaspiFilters()">
+                Тазарту
+            </button>
+            <button type="button" id="btnKaspiApplyFilter" style="padding:11px; border:none; background:#f59e0b; color:#ffffff; border-radius:8px; font-size:12.5px; font-weight:900; cursor:pointer;" onclick="applyKaspiFilters(event)">
+                Тауарларды көрсету
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= БУХГАЛТЕРЛІК ҚҰЖАТТАР МОДАЛІ (1C СТИЛІ) ================= -->
+<div id="documentModal" class="modal-layer">
+    <div class="modal-window doc-modal-window">
+        <!-- Жоғарғы басқару панелі -->
+        <div class="doc-modal-actions">
+            <div>
+                <b id="docModalTitle" style="font-size:14px; color:var(--primary); display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-file-invoice"></i>
+                    <span>Бухгалтерлік құжат</span>
+                </b>
+                <span style="font-size:11px; color:var(--text-secondary); margin-left:8px;">(ҚР стандарты)</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn-print-doc" onclick="printGeneratedDocument()" style="display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Басып шығару (Печать / PDF)</span>
+                </button>
+                <button class="drawer-close-btn" onclick="closeDocumentModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- А4 парағының пішіміндегі ресми құжат контейнері -->
+        <div class="doc-paper-scroll">
+            <div id="documentPrintArea" class="a4-document-sheet">
+                <!-- JavaScript арқылы динамикалық толтырылады -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Артқа қайту батырмасы (Қосалқы) -->
+<button class="back-btn" onclick="backToBrandList()" style="display:none;">
+    <i class="fa-solid fa-chevron-left"></i>
+</button>
+
+<!-- Swiper & SweetAlert2 JS кітапханалары -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+
+    <script src="script.js"></script>
+<!-- СКРИПТТЕР ТІЗБЕГІ -->
+<script src="data/categories.js"></script>
+<script src="i18n.js"></script>
+<script src="script.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"/>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="script.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+</body>
+</html>
