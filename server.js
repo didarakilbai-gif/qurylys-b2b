@@ -1,26 +1,49 @@
-// server.js — QURYLYS B2B Backend API Server
+// server.js — QURYLYS B2B Backend API Server (Production Ready)
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // Фронтенд файлдарды тікелей тарату
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
+// СТАТИКАЛЫҚ ФАЙЛДАРДЫ ҚАУІПСІЗ ТАРАТУ (PUBLIC НЕ ТҮБІР ПАПКАДАН)
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
+
+// БАСТЫ БЕТ БАҒЫТТАМАСЫ (INDEX.HTML ТАБУ)
+app.get('/', (req, res) => {
+    const publicIndex = path.join(__dirname, 'public', 'index.html');
+    const rootIndex = path.join(__dirname, 'index.html');
+    
+    if (fs.existsSync(publicIndex)) {
+        res.sendFile(publicIndex);
+    } else if (fs.existsSync(rootIndex)) {
+        res.sendFile(rootIndex);
+    } else {
+        res.status(404).send("Қате: index.html файлы табылмады!");
+    }
 });
 
-// 1. АВТОРИЗАЦИЯ (DA01 / DBMS01)
+// NEON POSTGRESQL БАЙЛАНЫСЫ
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
+
+// 1. АВТОРИЗАЦИЯ
 app.post('/api/auth/login', async (req, res) => {
     const { login, company_code } = req.body;
     try {
         const result = await pool.query(
             'SELECT * FROM users WHERE license_code = $1',
-            [company_code.toUpperCase()]
+            [(company_code || '').toUpperCase()]
         );
         if (result.rows.length === 0) {
             return res.status(401).json({ status: 'error', detail: 'Лицензиялық код табылмады' });
@@ -43,7 +66,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// 2. АКТИВТІ ЗАЯВКАЛАР ТІЗІМІН ШЫҒАРУ
+// 2. АКТИВТІ ЗАЯВКАЛАР
 app.get('/api/active-orders', async (req, res) => {
     try {
         const query = `
@@ -79,7 +102,7 @@ app.get('/api/active-orders', async (req, res) => {
     }
 });
 
-// 3. ЖАҢА ЗАЯВКА ҚАБЫЛДАУ (Транзакциямен қойма қалдығын азайту)
+// 3. ЖАҢА ЗАЯВКА ҚАБЫЛДАУ ЖӘНЕ ҚОЙМАДАН ШЕГЕРУ
 app.post('/api/order-without-advance', async (req, res) => {
     const { sku, buyer_bin, quantity, delivery_address } = req.body;
     const client = await pool.connect();
@@ -87,7 +110,6 @@ app.post('/api/order-without-advance', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // Тауар мен қалдықты тексеру
         const prodRes = await client.query('SELECT * FROM products WHERE sku = $1 FOR UPDATE', [sku]);
         if (prodRes.rows.length === 0) {
             await client.query('ROLLBACK');
@@ -100,7 +122,6 @@ app.post('/api/order-without-advance', async (req, res) => {
             return res.status(400).json({ detail: `Қоймада жеткіліксіз! Бар қалдық: ${product.stock_qty} ${product.unit}` });
         }
 
-        // Қаржылық есептеулер
         const total = Number(product.price_kzt) * Number(quantity);
         const advAmount = Math.round(total * (Number(product.advance_percent) / 100));
         const remAmount = total - advAmount;
@@ -108,10 +129,8 @@ app.post('/api/order-without-advance', async (req, res) => {
         const trackCode = `TRK-QUR-${Math.floor(1000 + Math.random() * 9000)}`;
         const qrHash = crypto.randomBytes(16).toString('hex');
 
-        // Қойма қалдығын шегеру
         await client.query('UPDATE products SET stock_qty = stock_qty - $1 WHERE sku = $2', [quantity, sku]);
 
-        // Тапсырыс жасау
         await client.query(`
             INSERT INTO orders (order_id, buyer_bin, sku, qty, total_amount, advance_percent, advance_amount, remaining_amount, payment_status, status, delivery_address, track_code, qr_secret_hash)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
@@ -132,10 +151,9 @@ app.post('/api/order-without-advance', async (req, res) => {
     }
 });
 
-// 4. ТӨЛЕМ ШЛЮЗІ (KASPI PAY / HALYK WEBHOOK CALLBACK)
+// 4. ТӨЛЕМ ШЛЮЗІ (KASPI PAY WEBHOOK)
 app.post('/api/payments/webhook', async (req, res) => {
-    const { order_id, amount_paid, signature } = req.body;
-
+    const { order_id, amount_paid } = req.body;
     try {
         const orderRes = await pool.query('SELECT * FROM orders WHERE order_id = $1', [order_id]);
         if (orderRes.rows.length === 0) return res.status(404).send('Order not found');
@@ -147,33 +165,26 @@ app.post('/api/payments/webhook', async (req, res) => {
                 SET payment_status = 'ADVANCE_PAID', status = 'IN_TRANSIT' 
                 WHERE order_id = $1
             `, [order_id]);
-
-            // Зауытқа / Жеткізушіге авто-хабарлама (SMS/Telegram Bot арқылы)
-            console.log(`[ALERT ЗАУЫТҚА] ${order.order_id} үшін ${amount_paid} ₸ аванс төленді! Жөнелтуге рұқсат берілді.`);
         }
-
         res.json({ status: 'PROCESSED' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// 5. ҚОЙМА ЖӘНЕ ПРОРАБТЫҢ QR-СКАНЕРІ (З-2 НАКЛАДНАЯНЫ ЖАБУ)
+// 5. QR-СКАНЕРМЕН З-2 ЖАБУ
 app.post('/api/orders/qr-confirm', async (req, res) => {
-    const { qr_hash, supervisor_bin } = req.body;
-
+    const { qr_hash } = req.body;
     try {
         const orderRes = await pool.query('SELECT * FROM orders WHERE qr_secret_hash = $1', [qr_hash]);
         if (orderRes.rows.length === 0) {
-            return res.status(400).json({ success: false, message: 'Жарамсыз QR-код немесе жүкқұжат жоқ!' });
+            return res.status(400).json({ success: false, message: 'Жарамсыз QR-код!' });
         }
-
         const order = orderRes.rows[0];
         if (order.status === 'DELIVERED') {
-            return res.status(400).json({ success: false, message: 'Бұл тауар бұрын қабылданған және З-2 жабылған!' });
+            return res.status(400).json({ success: false, message: 'Бұл З-2 бұрын жабылған!' });
         }
 
-        // Жүкқұжатты жауып, мәртебені "Жеткізілді" етіп бекіту
         await pool.query(`
             UPDATE orders 
             SET status = 'DELIVERED', payment_status = 'FULLY_PAID', z2_closed_at = NOW() 
@@ -190,37 +201,7 @@ app.post('/api/orders/qr-confirm', async (req, res) => {
     }
 });
 
-// 6. КУРЬЕР ГЕОЛОКАЦИЯСЫН ЖАҢАРТУ ЖӘНЕ ОҚУ (LIVE 2GIS TRACKING)
-app.post('/api/logistics/geo-update', async (req, res) => {
-    const { order_id, lat, lon } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO courier_geo_logs (order_id, lat, lon) VALUES ($1, $2, $3)',
-            [order_id, lat, lon]
-        );
-        res.json({ status: 'UPDATED' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/api/logistics/live/:order_id', async (req, res) => {
-    try {
-        const result = await pool.query(
-            'SELECT lat, lon, updated_at FROM courier_geo_logs WHERE order_id = $1 ORDER BY id DESC LIMIT 1',
-            [req.params.order_id]
-        );
-        if (result.rows.length === 0) {
-            // Әдепкі нүкте (Алматы хабы)
-            return res.json({ lat: 43.2642, lon: 76.8920 });
-        }
-        res.json(result.rows[0]);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`QURYLYS Enterprise Backend http://localhost:${PORT} портында қосылды`);
+    console.log(`QURYLYS Enterprise Backend портта қосылды: ${PORT}`);
 });
